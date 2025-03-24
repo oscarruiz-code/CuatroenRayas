@@ -1,32 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:juegocuatroenrayas/service/servicios.dart';// Importa la clase Servicios
 
 class Juego extends StatefulWidget {
-  const Juego({super.key});
+  final String gameId;
+  final String gameName;
+
+  const Juego({super.key, required this.gameId, required this.gameName});
 
   @override
   State<Juego> createState() => _JuegoState();
 }
 
 class _JuegoState extends State<Juego> {
-  static const int tamanioTablero = 4; // Tamaño del tablero 4x4
-  List<List<String>> tablero = List.generate(
-    tamanioTablero,
-    (_) => List.generate(tamanioTablero, (_) => ''),
-  );
+  static const int tamanioTablero = 4;
+  List<List<String>> tablero = [
+    ['', '', '', ''],
+    ['', '', '', ''],
+    ['', '', '', ''],
+    ['', '', '', ''],
+  ];
 
-  String turnoActual = 'Jugador 1'; // "Jugador 1" para X, "Jugador 2" para O
-  int fichasColocadasJugador1 = 0; // Fichas del Jugador 1
-  int fichasColocadasJugador2 = 0; // Fichas del Jugador 2
-  bool faseColocacion = true; // Fase inicial de colocación de fichas
+  String turnoActual = 'Jugador 1';
+  int fichasColocadasJugador1 = 0;
+  int fichasColocadasJugador2 = 0;
+  bool faseColocacion = true;
+
+  int? fichaSeleccionadaFila;
+  int? fichaSeleccionadaColumna;
 
   void reiniciarJuego() {
     setState(() {
-      tablero = List.generate(
-          tamanioTablero, (_) => List.generate(tamanioTablero, (_) => ''));
+      tablero = [
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+      ];
+
       turnoActual = 'Jugador 1';
       fichasColocadasJugador1 = 0;
       fichasColocadasJugador2 = 0;
       faseColocacion = true;
+      fichaSeleccionadaFila = null;
+      fichaSeleccionadaColumna = null;
     });
   }
 
@@ -43,7 +59,6 @@ class _JuegoState extends State<Juego> {
 
   void colocarFicha(int fila, int columna) {
     if (faseColocacion) {
-      // Determinar si es la primera ficha del Jugador 1 (con restricción de borde)
       bool primeraFichaRestriccion =
           turnoActual == 'Jugador 1' && fichasColocadasJugador1 == 0;
 
@@ -51,14 +66,19 @@ class _JuegoState extends State<Juego> {
           (fichasColocadasJugador1 < 4 || fichasColocadasJugador2 < 4) &&
           (!primeraFichaRestriccion || alBorde(fila, columna))) {
         setState(() {
-          tablero[fila][columna] =
-              turnoActual == 'Jugador 1' ? 'X' : 'O'; // Asignar símbolo
-          turnoActual == 'Jugador 1'
-              ? fichasColocadasJugador1++
-              : fichasColocadasJugador2++;
+          String simbolo = turnoActual == 'Jugador 1' ? 'X' : 'O';
+          tablero[fila][columna] = simbolo;
+
+          if (turnoActual == 'Jugador 1') {
+            fichasColocadasJugador1++;
+          } else {
+            fichasColocadasJugador2++;
+          }
+
           if (fichasColocadasJugador1 == 4 && fichasColocadasJugador2 == 4) {
             faseColocacion = false;
           }
+
           turnoActual = turnoActual == 'Jugador 1' ? 'Jugador 2' : 'Jugador 1';
         });
       }
@@ -67,14 +87,10 @@ class _JuegoState extends State<Juego> {
     }
   }
 
-  int? fichaSeleccionadaFila;
-  int? fichaSeleccionadaColumna;
-
   void seleccionarOMoverFicha(int fila, int columna) {
-    if (faseColocacion) return; // Ignorar esta función en la fase de colocación
+    if (faseColocacion) return;
 
     if (fichaSeleccionadaFila == null && fichaSeleccionadaColumna == null) {
-      // Seleccionar ficha del jugador actual
       if ((turnoActual == 'Jugador 1' && tablero[fila][columna] == 'X') ||
           (turnoActual == 'Jugador 2' && tablero[fila][columna] == 'O')) {
         setState(() {
@@ -83,26 +99,37 @@ class _JuegoState extends State<Juego> {
         });
       }
     } else {
-      // Si ya hay una ficha seleccionada
       if ((turnoActual == 'Jugador 1' && tablero[fila][columna] == 'X') ||
           (turnoActual == 'Jugador 2' && tablero[fila][columna] == 'O')) {
-        // Cambiar selección
         setState(() {
           fichaSeleccionadaFila = fila;
           fichaSeleccionadaColumna = columna;
         });
-      } else if (esAdyacente(fila, columna, fichaSeleccionadaFila!,
-              fichaSeleccionadaColumna!) &&
+      } else if (esAdyacente(
+              fila, columna, fichaSeleccionadaFila!, fichaSeleccionadaColumna!) &&
           tablero[fila][columna].isEmpty) {
-        // Mover ficha seleccionada
         setState(() {
-          tablero[fila][columna] = turnoActual == 'Jugador 1' ? 'X' : 'O';
+          String simboloActual = turnoActual == 'Jugador 1' ? 'X' : 'O';
+          tablero[fila][columna] = simboloActual;
           tablero[fichaSeleccionadaFila!][fichaSeleccionadaColumna!] = '';
           fichaSeleccionadaFila = null;
           fichaSeleccionadaColumna = null;
           turnoActual = turnoActual == 'Jugador 1' ? 'Jugador 2' : 'Jugador 1';
         });
       }
+    }
+  }
+
+  Future<void> guardarTablero() async {
+    await Servicios().guardarJuego(widget.gameId, widget.gameName, tablero);
+  }
+
+  Future<void> cargarTablero() async {
+    final tableroCargado = await Servicios().cargarJuego(widget.gameId);
+    if (tableroCargado != null) {
+      setState(() {
+        tablero = tableroCargado;
+      });
     }
   }
 
@@ -166,7 +193,7 @@ class _JuegoState extends State<Juego> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: Text("¡Victoria!"),
+                      title: const Text("¡Victoria!"),
                       content: Text(
                           "${turnoActual == 'Jugador 1' ? 'Jugador 2' : 'Jugador 1'} ha ganado."),
                       actions: [
@@ -175,7 +202,7 @@ class _JuegoState extends State<Juego> {
                             Navigator.of(context).pop();
                             reiniciarJuego();
                           },
-                          child: Text("Reiniciar"),
+                          child: const Text("Reiniciar"),
                         ),
                       ],
                     ),
@@ -211,14 +238,29 @@ class _JuegoState extends State<Juego> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cuatro en Raya'),
+        title: Text(widget.gameName),
       ),
       body: Center(
         child: construirTablero(),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: reiniciarJuego,
-        child: const Icon(Icons.refresh),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: reiniciarJuego,
+            child: const Icon(Icons.refresh),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            onPressed: guardarTablero,
+            child: const Icon(Icons.save),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            onPressed: cargarTablero,
+            child: const Icon(Icons.download),
+          ),
+        ],
       ),
     );
   }

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import './src/juego.dart'; // Ruta hacia el archivo de lógica del juego
-
+import 'package:juegocuatroenrayas/src/juego.dart';
 void main() {
-  runApp(const MaterialApp(
-    home: Juego(),
+  runApp( MaterialApp(
+    home: Juego(gameId: "2",gameName: "CuatroRayasDos",),
   ));
 }
